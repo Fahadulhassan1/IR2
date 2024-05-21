@@ -4,6 +4,9 @@ from document import Document
 from collections import Counter
 
 import re
+import os
+
+RAW_DATA_PATH = "raw_data"
 
 
 def remove_symbols(text_string: str) -> str:
@@ -37,9 +40,11 @@ def remove_stop_words_from_term_list(term_list: list[str]) -> list[str]:
     :param term_list: List that contains the terms
     :return: List of terms without stop words
     """
+    raw_collection_file = os.path.join(RAW_DATA_PATH, "englishST.txt")
+
     # Hint:  Implement the functions remove_symbols() and is_stop_word() first and use them here.
     stop_word_list = load_stop_word_list(
-        "raw_data/englishST.txt"
+        raw_collection_file
     )  # Load stop words from file
     cleaned_terms = []
     for term in term_list:
