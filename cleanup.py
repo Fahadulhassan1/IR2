@@ -76,6 +76,7 @@ def load_stop_word_list(raw_file_path: str) -> list[str]:
     """
     with open(raw_file_path, "r") as file:
         stop_words = file.read().splitlines()
+    stop_words = [word.lower() for word in stop_words]
     return stop_words
 
 
