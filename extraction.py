@@ -11,65 +11,70 @@ def extract_collection(source_file_path: str) -> list[Document]:
     :param source_file_name: File name of the file that contains the fables
     :return: List of Document objects
     """
-    catalog = []  # List to store Document objects
-    doc = Document()
+    catalog = []  # this dictionary will store the document raw_data.\
     document_id = 0  # Unique document ID counter
 
     with open(source_file_path, "r", encoding="utf-8") as file:
         # Skip lines until reaching line 308
-        for _ in range(307):
+        skipped_lines = 0
+        while skipped_lines < 307:
             file.readline()
+            skipped_lines += 1
 
-        current_title = None  # Temporary variable to store current fable title
-        current_text = ""  # String to accumulate fable text
-        inside_raw_text = False
-        blank_line_count = 0
-        blank_line_inside_raw_text = 0
+        title = ""  # Temporary variable to store current title
+        currentData = ""  # String to get raw text
+        isRawtext = False
+        emptyLineCounter = 0
+        emptyLineBetweenRawData = 0
 
         for line in file:
-            line = line.strip()  # Remove leading/trailing whitespace
-            if line == "" and not inside_raw_text:
-                blank_line_count += 1
+            line = line.strip()  # delete white spaces
+            if line == "" and not isRawtext:
+                emptyLineCounter += 1
                 continue
-            if blank_line_count == 2:
-                inside_raw_text = True
+            if emptyLineCounter == 2:
+                isRawtext = True
                 if line == "":
-                    blank_line_inside_raw_text += 1
+                    emptyLineBetweenRawData += 1
                 else:
-                    current_text += line + " "
-                    blank_line_inside_raw_text = 0
-            if blank_line_inside_raw_text == 3:
-                blank_line_count = 3
+                    currentData += line + " "
+                    emptyLineBetweenRawData = 0
+            if emptyLineBetweenRawData == 3:
+                emptyLineCounter = 3
 
-            # Empty line (end of current fable or blank lines)
-            if blank_line_count == 3:
-                all_terms = current_text.split()
-                doc = Document()  # Create a new Document instance
+            # Empty Line
+            if emptyLineCounter == 3:
+
+                all_terms = currentData.split()
+                doc = Document()  # New Document object
+                doc.title = title
                 doc.document_id = document_id
-                doc.title = current_title
-                doc.raw_text = current_text.strip()
                 doc.terms = all_terms
+                doc.raw_text = currentData.strip()
                 catalog.append(doc)
-                document_id += 1  # Increment document ID
-                current_title = None
-                current_text = ""
-                blank_line_count = 0
-                blank_line_inside_raw_text = 0
-                inside_raw_text = False
+
+                document_id += 1  # Increments doc id
+                title = ""
+                emptyLineCounter = 0
+                currentData = ""
+                emptyLineBetweenRawData = 0
+                isRawtext = False
+
                 continue
 
-            if line and not inside_raw_text:  # Line with fable title
-                current_title = line
+            if not isRawtext and line:  # Line with title
+                title = line
 
-        # Handle the last document if the file ends without enough blank lines
-        if current_text or current_title:
-            all_terms = current_text.split()
+        # Manage the last document if the file does not end with enough blank lines.
+        if currentData or title:
+            all_terms = currentData.split()
+
             doc = Document()
+            doc.title = title
             doc.document_id = document_id
-            doc.title = current_title
-            doc.raw_text = current_text.strip()
             doc.terms = all_terms
-            print(doc.terms)
+            doc.raw_text = currentData.strip()
+
             catalog.append(doc)
 
     return catalog
