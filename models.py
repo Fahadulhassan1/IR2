@@ -7,7 +7,9 @@ from document import Document
 
 class RetrievalModel(ABC):
     @abstractmethod
-    def document_to_representation(self, document: Document, stopword_filtering=False, stemming=False):
+    def document_to_representation(
+        self, document: Document, stopword_filtering=False, stemming=False
+    ):
         """
         Converts a document into its model-specific representation.
         This is an abstract method and not meant to be edited. Implement it in the subclasses!
@@ -42,10 +44,47 @@ class RetrievalModel(ABC):
 class LinearBooleanModel(RetrievalModel):
     # TODO: Implement all abstract methods and __init__() in this class. (PR02)
     def __init__(self):
-        raise NotImplementedError()  # TODO: Remove this line and implement the function.
+        self.documents = []
+
+    def document_to_representation(
+        self, document: Document, stopword_filtering=False, stemming=False
+    ):
+        """
+        Converts a document into a list of terms (words).
+        :param document: Document object to be represented
+        :param stopword_filtering: Controls, whether the document should first be freed of stopwords
+        :param stemming: Controls, whether stemming is used on the document's terms
+        :return: A list of terms representing the document
+        """
+        terms = document.terms
+        terms = [term.lower() for term in terms]  # Convert all terms to lowercase
+
+        if stopword_filtering:
+            terms = [term for term in terms if term not in document.filtered_terms]
+        return terms
+
+    def query_to_representation(self, query: str):
+        """
+        Converts a query into a list of terms (words).
+        :param query: Search query of the user
+        :return: A list of terms representing the query
+        """
+        return query.lower().split()
+
+    def match(self, document_representation, query_representation) -> float:
+        """
+        Matches the query and document presentation based on Boolean search.
+        :param document_representation: List of terms that describes one document
+        :param query_representation: List of terms that describes a query
+        :return: 1.0 if the query term is in the document, 0.0 otherwise
+        """
+        for query_term in query_representation:
+            if query_term in document_representation:
+                return 1.0
+        return 0.0
 
     def __str__(self):
-        return 'Boolean Model (Linear)'
+        return "Boolean Model (Linear)"
 
 
 class InvertedListBooleanModel(RetrievalModel):
@@ -54,7 +93,7 @@ class InvertedListBooleanModel(RetrievalModel):
         raise NotImplementedError()  # TODO: Remove this line and implement the function. (PR3, Task 2)
 
     def __str__(self):
-        return 'Boolean Model (Inverted List)'
+        return "Boolean Model (Inverted List)"
 
 
 class SignatureBasedBooleanModel(RetrievalModel):
@@ -63,7 +102,7 @@ class SignatureBasedBooleanModel(RetrievalModel):
         raise NotImplementedError()  # TODO: Remove this line and implement the function.
 
     def __str__(self):
-        return 'Boolean Model (Signatures)'
+        return "Boolean Model (Signatures)"
 
 
 class VectorSpaceModel(RetrievalModel):
@@ -72,7 +111,7 @@ class VectorSpaceModel(RetrievalModel):
         raise NotImplementedError()  # TODO: Remove this line and implement the function.
 
     def __str__(self):
-        return 'Vector Space Model'
+        return "Vector Space Model"
 
 
 class FuzzySetModel(RetrievalModel):
@@ -81,4 +120,4 @@ class FuzzySetModel(RetrievalModel):
         raise NotImplementedError()  # TODO: Remove this line and implement the function.
 
     def __str__(self):
-        return 'Fuzzy Set Model'
+        return "Fuzzy Set Model"

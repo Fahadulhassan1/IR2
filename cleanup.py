@@ -92,20 +92,16 @@ def create_stop_word_list_by_frequency(collection: list[Document]) -> list[str]:
             term_frequency[term] = term_frequency.get(term, 0) + 1
 
     # Set threshold for high and low-frequency terms
-    threshold = 100  # Adjust as needed
+    threshold = 50  # Adjust as needed
 
     # Identify high and low-frequency terms
     high_frequency_terms = [
         term for term, frequency in term_frequency.items() if frequency > threshold
     ]
+    # we assume low frequency terms are stopwords
     low_frequency_terms = [
         term for term, frequency in term_frequency.items() if frequency <= threshold
     ]
-
-    all_terms_set = set(high_frequency_terms)
-    all_terms_set.update(low_frequency_terms)
-
     # Converting back to a list
-    all_terms = list(all_terms_set)
 
-    return all_terms
+    return low_frequency_terms
