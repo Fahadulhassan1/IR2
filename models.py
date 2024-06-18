@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 from document import Document
 
-
+import porter
 class RetrievalModel(ABC):
     @abstractmethod
     def document_to_representation(
@@ -88,9 +88,28 @@ class LinearBooleanModel(RetrievalModel):
 
 
 class InvertedListBooleanModel(RetrievalModel):
-    # TODO: Implement all abstract methods and __init__() in this class. (PR03)
     def __init__(self):
-        raise NotImplementedError()  # TODO: Remove this line and implement the function. (PR3, Task 2)
+        self.inverted_index = {}
+
+    def document_to_representation(
+        self, document: Document, stopword_filtering=False, stemming=False
+    ):
+        terms = document.terms
+        terms = [term.lower() for term in terms]  # Convert all terms to lowercase
+
+        if stopword_filtering:
+            terms = [term for term in terms if term not in document.filtered_terms]
+
+        if stemming:
+            terms = [porter.stem_term(term) for term in terms]
+
+        return terms
+
+    def query_to_representation(self, query: str):
+        return query.lower().split()
+
+    def match(self, document_representation, query_representation) -> float:
+        raise NotImplementedError("Match is not used directly in this model.")
 
     def __str__(self):
         return "Boolean Model (Inverted List)"

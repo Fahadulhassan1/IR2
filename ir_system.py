@@ -24,6 +24,9 @@ import extraction
 import models
 import porter
 from document import Document
+import re
+
+import time
 
 # Important paths:
 RAW_DATA_PATH = "raw_data"
@@ -125,6 +128,7 @@ class InformationRetrievalSystem(object):
                 query = input("Query: ")
                 if stemming:
                     query = porter.stem_query_terms(query)
+                start_time = time.time()  # Start measuring time
 
                 if isinstance(self.model, models.InvertedListBooleanModel):
                     results = self.inverted_list_search(
@@ -142,6 +146,7 @@ class InformationRetrievalSystem(object):
                     results = self.basic_query_search(
                         query, stemming, stop_word_filtering
                     )
+                end_time = time.time()  # End measuring time
 
                 # Output of results:
                 for score, document in results:
@@ -149,9 +154,11 @@ class InformationRetrievalSystem(object):
 
                 # Output of quality metrics:
                 print()
-                # print(f'precision: {self.calculate_precision(results)}')
-                # print(f'recall: {self.calculate_recall(results)}')
+                print(f'precision: {self.calculate_precision(results)}')
+                print(f'recall: {self.calculate_recall(results)}')
 
+                processing_time = (end_time - start_time) * 1000  # Convert to milliseconds
+                print(f'Query processing time: {processing_time:.2f} ms')
             elif action_choice == CHOICE_EXTRACT:
                 # Extract document collection from text file.
 
@@ -283,8 +290,54 @@ class InformationRetrievalSystem(object):
         :return: List of tuples, where the first element is the relevance score and the second the corresponding
         document
         """
-        # TODO: Implement this function (PR03)
-        raise NotImplementedError("To be implemented in PR04")
+        if not hasattr(self, 'inverted_index'):
+            self.build_inverted_index(stemming, stop_word_filtering)
+        
+        # Parse and process the query
+        results = self.process_boolean_query(query)
+        
+        # Retrieve the actual documents
+        result_documents = [(1, self.collection[doc_id - 1]) for doc_id in results]
+        
+        return result_documents
+    
+    def build_inverted_index(self, stemming: bool, stop_word_filtering: bool):
+        self.inverted_index = {}
+        
+        for doc_id, document in enumerate(self.collection, start=1):
+            terms = self.model.document_to_representation(document , stop_word_filtering, stemming)
+            for term in terms:
+                if term not in self.inverted_index:
+                    self.inverted_index[term] = set()
+                self.inverted_index[term].add(doc_id)
+    
+    def process_boolean_query(self, query: str) -> set:
+        terms = self.parse_query(query)
+        result_set = None
+        
+        for term, operator in terms:
+            if operator == "&":
+                result_set = result_set & self.inverted_index.get(term, set()) if result_set is not None else self.inverted_index.get(term, set())
+            elif operator == "|":
+                result_set = result_set | self.inverted_index.get(term, set()) if result_set is not None else self.inverted_index.get(term, set())
+            elif operator == "-":
+                result_set = result_set - self.inverted_index.get(term, set()) if result_set is not None else set(self.collection.keys()) - self.inverted_index.get(term, set())
+            else:
+                result_set = self.inverted_index.get(term, set()) if result_set is None else result_set
+                
+        return result_set if result_set is not None else set()
+
+    def parse_query(self, query: str) -> list:
+        terms = re.findall(r'(-?\w+)([&|]*)', query)
+        parsed_terms = []
+        
+        for term, operator in terms:
+            if term.startswith('-'):
+                parsed_terms.append((term[1:], "-"))
+            else:
+                parsed_terms.append((term, "&" if not operator else operator))
+        
+        return parsed_terms
 
     def buckley_lewit_search(
         self, query: str, stemming: bool, stop_word_filtering: bool
@@ -313,15 +366,64 @@ class InformationRetrievalSystem(object):
         """
         # TODO: Implement this function (PR04)
         raise NotImplementedError("To be implemented in PR04")
-
     def calculate_precision(self, result_list: list[tuple]) -> float:
-        # TODO: Implement this function (PR03)
-        raise NotImplementedError("To be implemented in PR03")
+        try:
+            with open(os.path.join(RAW_DATA_PATH, "ground_truth.txt"), "r") as f:
+                ground_truth = f.read().splitlines()
+
+            relevant_docs = set()
+            for line in ground_truth:
+                if not line.strip() or line.startswith("#"):
+                    # Skip empty lines and comments
+                    continue
+
+                parts = line.split(' - ')
+                if len(parts) == 2:
+                    term, doc_ids = parts
+                    relevant_docs.update(map(int, doc_ids.split(', ')))
+                else:
+                    print(f"Skipping malformed line in ground_truth.txt: {line}")
+
+            retrieved_docs = {doc.document_id for _, doc in result_list}
+            true_positives = len(relevant_docs.intersection(retrieved_docs))
+
+            return true_positives / len(retrieved_docs) if retrieved_docs else -1
+
+        except FileNotFoundError:
+            return -1
+        except Exception as e:
+            print(f"An error occurred while calculating precision: {e}")
+            return -1
 
     def calculate_recall(self, result_list: list[tuple]) -> float:
-        # TODO: Implement this function (PR03)
-        raise NotImplementedError("To be implemented in PR03")
+        try:
+            with open(os.path.join(RAW_DATA_PATH, "ground_truth.txt"), "r") as f:
+                ground_truth = f.read().splitlines()
 
+            relevant_docs = set()
+            for line in ground_truth:
+                if not line.strip() or line.startswith("#"):
+                    # Skip empty lines and comments
+                    continue
+
+                parts = line.split(' - ')
+                if len(parts) == 2:
+                    term, doc_ids = parts
+                    relevant_docs.update(map(int, doc_ids.split(', ')))
+                else:
+                    print(f"Skipping malformed line in ground_truth.txt: {line}")
+
+            retrieved_docs = {doc.document_id for _, doc in result_list}
+            true_positives = len(relevant_docs.intersection(retrieved_docs))
+
+            return true_positives / len(relevant_docs) if relevant_docs else -1
+
+        except FileNotFoundError:
+            return -1
+        except Exception as e:
+            print(f"An error occurred while calculating recall: {e}")
+            return -1
+    
 
 if __name__ == "__main__":
     irs = InformationRetrievalSystem()
